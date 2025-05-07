@@ -6,6 +6,7 @@ import {
     MessageActions,
     MotionSkeleton,
     QuestionPrompt,
+    RagDocuments,
     SourceGrid,
     Steps,
 } from '@repo/common/components';
@@ -80,6 +81,10 @@ export const ThreadItem = memo(
                                 imageAttachment={threadItem?.imageAttachment}
                                 threadItem={threadItem}
                             />
+                        )}
+
+                        {threadItem.ragDocuments && threadItem.ragDocuments.length > 0 && (
+                            <RagDocuments documents={threadItem.ragDocuments} />
                         )}
 
                         <div className="text-muted-foreground flex flex-row items-center gap-1.5 text-xs font-medium">

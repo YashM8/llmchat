@@ -59,6 +59,11 @@ export type ToolResult = {
     result: any;
 };
 
+export type RagDocument = {
+    text: string;
+    score: number;
+};
+
 export type ThreadItem = {
     query: string;
     toolCalls?: Record<string, ToolCall>;
@@ -79,6 +84,7 @@ export type ThreadItem = {
     sources?: Source[];
     object?: Record<string, any>;
     imageAttachment?: string;
+    ragDocuments?: RagDocument[];
 };
 
 export type MessageGroup = {

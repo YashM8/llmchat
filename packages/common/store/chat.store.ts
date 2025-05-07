@@ -79,6 +79,7 @@ type State = {
     isLoadingThreads: boolean;
     isLoadingThreadItems: boolean;
     currentSources: string[];
+    ragEmbeddings: { text: string; embedding: number[] }[];
     creditLimit: {
         remaining: number | undefined;
         maxLimit: number | undefined;
@@ -122,6 +123,8 @@ type Actions = {
     setCurrentSources: (sources: string[]) => void;
     setUseWebSearch: (useWebSearch: boolean) => void;
     setShowSuggestions: (showSuggestions: boolean) => void;
+    setRagEmbeddings: (embeddings: { text: string; embedding: number[] }[]) => void;
+    getRagEmbeddings: () => { text: string; embedding: number[] }[];
 };
 
 // Add these utility functions at the top level
@@ -453,6 +456,7 @@ export const useChatStore = create(
         isLoadingThreads: false,
         isLoadingThreadItems: false,
         currentSources: [],
+        ragEmbeddings: [],
         creditLimit: {
             remaining: undefined,
             maxLimit: undefined,
@@ -920,6 +924,16 @@ export const useChatStore = create(
         getCurrentThread: () => {
             const state = get();
             return state.threads.find(t => t.id === state.currentThreadId) || null;
+        },
+
+        setRagEmbeddings: (embeddings: { text: string; embedding: number[] }[]) => {
+            set(state => {
+                state.ragEmbeddings = embeddings;
+            });
+        },
+
+        getRagEmbeddings: () => {
+            return get().ragEmbeddings;
         },
     }))
 );

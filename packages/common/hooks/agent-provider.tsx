@@ -31,11 +31,6 @@ function getEmbeddings(inputTexts: string[], task: string): Promise<{ text: stri
         task: task,
         input: inputTexts
     });
-    console.log("\n\n\n\nInput Texts:");
-    inputTexts.forEach((text, index) => {
-        console.log(`[${index}]: ${text}`);
-    });
-    console.log("\n\n\n\n");
 
 
     const options = {
@@ -45,7 +40,7 @@ function getEmbeddings(inputTexts: string[], task: string): Promise<{ text: stri
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
-            'Authorization': 'Bearer jina_a1e1c1a54fb04609b815a3b6d4f8e475qXOTJm9CB5aZwsaKZ28J5VGeWVzz',
+            'Authorization': 'Bearer YOUR_API_KEY', //
             'Content-Length': data.length
         }
     };
@@ -102,16 +97,24 @@ export const AgentProvider = ({ children }: { children: ReactNode }) => {
     const { isSignedIn } = useAuth();
     const { user } = useUser();
 
-    // Step 1: index state
-    const [indexEntries, setIndexEntries] = useState<
-        { text: string; embedding: number[] }[]
-    >([]);
+    // Use the chat store for RAG embeddings
+    const { getRagEmbeddings, setRagEmbeddings } = useChatStore(state => ({
+        getRagEmbeddings: state.getRagEmbeddings,
+        setRagEmbeddings: state.setRagEmbeddings
+    }));
 
     useEffect(() => {
     const TSV_PATH = 'docs.tsv'; // Adjust this as needed
     const BATCH_SIZE = 10;
 
     const fetchAndEmbedTSV = async () => {
+        // Check if we already have embeddings in the store
+        const existingEmbeddings = getRagEmbeddings();
+        if (existingEmbeddings && existingEmbeddings.length > 0) {
+            console.log(`🎉 Using ${existingEmbeddings.length} existing embeddings from store`);
+            return;
+        }
+
         try {
             const res = await fetch(TSV_PATH);
             const raw = await res.text();
@@ -142,15 +145,16 @@ export const AgentProvider = ({ children }: { children: ReactNode }) => {
                 }
             }
 
-            setIndexEntries(results);
-            console.log(`🎉 Total embeddings loaded into memory: ${results.length}`);
+            // Store embeddings in the chat store for persistence
+            setRagEmbeddings(results);
+            console.log(`🎉 Total embeddings loaded into store: ${results.length}`);
         } catch (err) {
             console.error('Failed to build embeddings index:', err);
         }
     };
 
     fetchAndEmbedTSV();
-}, []);
+}, [getRagEmbeddings, setRagEmbeddings]);
 
 
 
@@ -496,11 +500,10 @@ export const AgentProvider = ({ children }: { children: ReactNode }) => {
             const query = formData.get('query') as string;
 
 
-            // const enhancedQuery = `${query}\n\nThink step by step.`;
-            // console.log(`\n\n\n\n${enhancedQuery}\n\n\n\n`);
-
+            // Get query embedding and find most relevant context
             const [{ embedding: qEmb }] = await getEmbeddings([query], "retrieval.query");
-            const withScores = indexEntries
+            const embeddings = getRagEmbeddings();
+            const withScores = embeddings
               .map((entry) => ({
                 ...entry,
                 score: cosineSim(qEmb, entry.embedding),
@@ -508,28 +511,21 @@ export const AgentProvider = ({ children }: { children: ReactNode }) => {
               .sort((a, b) => b.score - a.score)
               .slice(0, 3);
 
-            const top3texts = withScores.map(
-                (e) => e.text).join('\n\n\n');
+            // Store the top 3 documents with their scores for UI display
+            const ragDocuments = withScores.map(doc => ({
+                text: doc.text,
+                score: doc.score
+            }));
+
+            // Create enhanced query with relevant context
+            const top3texts = withScores.map(e => e.text).join('\n\n\n');
             const enhancedQuery = `
             ${query}
-            — Related contexts from our index —
+            Context Passages START """
             ${top3texts}
-                `.trim();
-            console.log(`\n\n\n\n${enhancedQuery}\n\n\n\n`);
-
-            // const texts = [
-            //     "ice cream is nice",
-            //     query
-            // ];
-            //
-            // getEmbeddings(texts).then(result => {
-            //     console.log("\n\n\n\n");
-            //     console.log(result);
-            //     console.log("\n\n\n\n");
-            //
-            // }).catch(err => {
-            //     console.error("Error:", err);
-            // });
+            """ Context Passages END
+            EXTREMELY IMPORTANT: Only use the Context Passages to answer. Do not use any other outside information. If you don't know the answer, just say so.
+                `;
 
 
 
@@ -544,6 +540,7 @@ export const AgentProvider = ({ children }: { children: ReactNode }) => {
                 query,
                 imageAttachment,
                 mode,
+                ragDocuments,
             };
 
             createThreadItem(aiThreadItem);
