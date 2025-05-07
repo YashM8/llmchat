@@ -5,7 +5,7 @@ import { ThreadItem } from '@repo/shared/types';
 import { buildCoreMessagesFromThreadItems, plausible } from '@repo/shared/utils';
 import { nanoid } from 'nanoid';
 import { useParams, useRouter } from 'next/navigation';
-import { createContext, ReactNode, useCallback, useContext, useEffect, useMemo } from 'react';
+import { useState, createContext, ReactNode, useCallback, useContext, useEffect, useMemo } from 'react';
 import { useApiKeysStore, useAppStore, useChatStore, useMcpToolsStore } from '../store';
 
 export type AgentContextType = {
@@ -23,11 +23,136 @@ export type AgentContextType = {
 };
 
 const AgentContext = createContext<AgentContextType | undefined>(undefined);
+import * as https from 'https';
+
+function getEmbeddings(inputTexts: string[], task: string): Promise<{ text: string, embedding: number[] }[]> {
+    const data = JSON.stringify({
+        model: "jina-embeddings-v3",
+        task: task,
+        input: inputTexts
+    });
+    console.log("\n\n\n\nInput Texts:");
+    inputTexts.forEach((text, index) => {
+        console.log(`[${index}]: ${text}`);
+    });
+    console.log("\n\n\n\n");
+
+
+    const options = {
+        hostname: 'api.jina.ai',
+        port: 443,
+        path: '/v1/embeddings',
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer jina_a1e1c1a54fb04609b815a3b6d4f8e475qXOTJm9CB5aZwsaKZ28J5VGeWVzz',
+            'Content-Length': data.length
+        }
+    };
+
+    return new Promise((resolve, reject) => {
+        const req = https.request(options, (res) => {
+            let responseData = '';
+
+            res.on('data', (chunk) => {
+                responseData += chunk;
+            });
+
+            res.on('end', () => {
+                try {
+                    const result = JSON.parse(responseData);
+                    if (result.data && Array.isArray(result.data)) {
+                        const output = result.data.map((item: any, index: number) => ({
+                            text: inputTexts[index],
+                            embedding: item.embedding
+                        }));
+                        resolve(output);
+                    } else {
+                        reject(new Error("Unexpected response format"));
+                    }
+                } catch (error) {
+                    reject(error);
+                }
+            });
+        });
+
+        req.on('error', (e) => {
+            reject(e);
+        });
+
+        req.write(data);
+        req.end();
+    });
+}
+
+// 3) helper for cosine similarity
+const cosineSim = (a: number[], b: number[]): number => {
+    let dot = 0, na = 0, nb = 0;
+    for (let i = 0; i < a.length; i++) {
+        dot += a[i] * b[i];
+        na += a[i] * a[i];
+        nb += b[i] * b[i];
+    }
+    return dot / (Math.sqrt(na) * Math.sqrt(nb));
+};
+
 
 export const AgentProvider = ({ children }: { children: ReactNode }) => {
     const { threadId: currentThreadId } = useParams();
     const { isSignedIn } = useAuth();
     const { user } = useUser();
+
+    // Step 1: index state
+    const [indexEntries, setIndexEntries] = useState<
+        { text: string; embedding: number[] }[]
+    >([]);
+
+    useEffect(() => {
+    const TSV_PATH = 'docs.tsv'; // Adjust this as needed
+    const BATCH_SIZE = 10;
+
+    const fetchAndEmbedTSV = async () => {
+        try {
+            const res = await fetch(TSV_PATH);
+            const raw = await res.text();
+
+            const lines = raw.trim().split('\n');
+            const texts = lines
+                  .map((line, idx) => {
+                    const cols = line.split('\t');
+                    if (cols.length < 3 || !cols[2]?.trim()) {
+                      console.warn(`⚠️ Skipping invalid line ${idx + 1}:`, line);
+                      return null;
+                    }
+                    return cols[2].trim();
+                  })
+                  .filter((text): text is string => !!text);
+
+
+            const results: { text: string; embedding: number[] }[] = [];
+
+            for (let i = 0; i < texts.length; i += BATCH_SIZE) {
+                const batch = texts.slice(i, i + BATCH_SIZE);
+                try {
+                    const batchResult = await getEmbeddings(batch, "retrieval.passage");
+                    results.push(...batchResult);
+                    console.log(`✅ Embedded batch ${i / BATCH_SIZE + 1}:`, batch.length, 'texts');
+                } catch (batchErr) {
+                    console.error(`❌ Failed to embed batch ${i / BATCH_SIZE + 1}:`, batchErr);
+                }
+            }
+
+            setIndexEntries(results);
+            console.log(`🎉 Total embeddings loaded into memory: ${results.length}`);
+        } catch (err) {
+            console.error('Failed to build embeddings index:', err);
+        }
+    };
+
+    fetchAndEmbedTSV();
+}, []);
+
+
 
     const {
         updateThreadItem,
@@ -369,6 +494,45 @@ export const AgentProvider = ({ children }: { children: ReactNode }) => {
 
             const optimisticAiThreadItemId = existingThreadItemId || nanoid();
             const query = formData.get('query') as string;
+
+
+            // const enhancedQuery = `${query}\n\nThink step by step.`;
+            // console.log(`\n\n\n\n${enhancedQuery}\n\n\n\n`);
+
+            const [{ embedding: qEmb }] = await getEmbeddings([query], "retrieval.query");
+            const withScores = indexEntries
+              .map((entry) => ({
+                ...entry,
+                score: cosineSim(qEmb, entry.embedding),
+              }))
+              .sort((a, b) => b.score - a.score)
+              .slice(0, 3);
+
+            const top3texts = withScores.map(
+                (e) => e.text).join('\n\n\n');
+            const enhancedQuery = `
+            ${query}
+            — Related contexts from our index —
+            ${top3texts}
+                `.trim();
+            console.log(`\n\n\n\n${enhancedQuery}\n\n\n\n`);
+
+            // const texts = [
+            //     "ice cream is nice",
+            //     query
+            // ];
+            //
+            // getEmbeddings(texts).then(result => {
+            //     console.log("\n\n\n\n");
+            //     console.log(result);
+            //     console.log("\n\n\n\n");
+            //
+            // }).catch(err => {
+            //     console.error("Error:", err);
+            // });
+
+
+
             const imageAttachment = formData.get('imageAttachment') as string;
 
             const aiThreadItem: ThreadItem = {
@@ -414,7 +578,7 @@ export const AgentProvider = ({ children }: { children: ReactNode }) => {
 
                 startWorkflow({
                     mode,
-                    question: query,
+                    question: enhancedQuery,
                     threadId,
                     messages: coreMessages,
                     mcpConfig: getSelectedMCP(),
@@ -426,7 +590,7 @@ export const AgentProvider = ({ children }: { children: ReactNode }) => {
             } else {
                 runAgent({
                     mode: newChatMode || chatMode,
-                    prompt: query,
+                    prompt: enhancedQuery,
                     threadId,
                     messages: coreMessages,
                     mcpConfig: getSelectedMCP(),
