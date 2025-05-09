@@ -12,7 +12,7 @@ export const completionTask = createTask<WorkflowEventSchema, WorkflowContextSch
             throw new Error('Context is required but was not provided');
         }
         console.log('context', context);
-        const customInstructions = context?.get('customInstructions');
+        const ragPrompt = context?.get('ragPrompt');
         const mode = context.get('mode');
         const webSearch = context.get('webSearch') || false;
 
@@ -25,7 +25,7 @@ export const completionTask = createTask<WorkflowEventSchema, WorkflowContextSch
                         !!message.content
                 ) || [];
 
-        console.log('customInstructions', customInstructions);
+        // console.log('ragPrompt plss', ragPrompt);
 
         // if (
         //     customInstructions &&
@@ -48,8 +48,7 @@ export const completionTask = createTask<WorkflowEventSchema, WorkflowContextSch
 
         const model = getModelFromChatMode(mode);
 
-        let prompt = `You are a helpful assistant that can answer questions and help with tasks.
-        `;
+        let prompt = ragPrompt;
 
         const reasoningBuffer = new ChunkBuffer({
             threshold: 200,

@@ -22,7 +22,7 @@ export type AgentContextType = {
     updateContext: (threadId: string, data: any) => void;
 };
 
-const TOP_K = 1;
+const TOP_K = 3;
 const RAG_INSTRUCTIONS = `### Task:
 You are an assistant helping medical professionals use the CANMAT 2018 Guidelines for Bipolar Disorder.
 Respond to the query using information from the provided Context Documents, which are excerpts from the CANMAT Guidelines. 
@@ -35,6 +35,9 @@ If the user asks about a specific topic and the information is found in "3.3.5" 
 ### Output:
 Provide a clear and direct response to the user's query, including inline citations in the format [source_id] only when the <source_id> tag is present in the context.
 Finish your response with "My task is complete".
+
+Here are the context passages:
+
 `
 
 const AgentContext = createContext<AgentContextType | undefined>(undefined);
@@ -540,7 +543,6 @@ export const AgentProvider = ({ children }: { children: ReactNode }) => {
             // console.log(`query exists ${query}`);
             const ragInstructions = `
             ${RAG_INSTRUCTIONS}
-            Here are the context passages:
             ${topktexts}
             `;
             const enhancedQuery = `
@@ -598,7 +600,8 @@ export const AgentProvider = ({ children }: { children: ReactNode }) => {
                 console.log("starting workflow");
                 startWorkflow({
                     mode,
-                    question: enhancedQuery,
+                    question: query,
+                    ragPrompt: ragInstructions,
                     threadId,
                     messages: coreMessages,
                     mcpConfig: getSelectedMCP(),

@@ -102,6 +102,7 @@ export function useWorkflowWorker(onMessage?: (data: any) => void, onAbort?: () 
     const startWorkflow = ({
         mode,
         question,
+        ragPrompt,
         threadId,
         threadItemId,
         parentThreadItemId,
@@ -113,6 +114,7 @@ export function useWorkflowWorker(onMessage?: (data: any) => void, onAbort?: () 
     }: {
         mode: ChatMode;
         question: string;
+        ragPrompt: string;
         threadId: string;
         threadItemId: string;
         parentThreadItemId: string;
@@ -152,6 +154,7 @@ export function useWorkflowWorker(onMessage?: (data: any) => void, onAbort?: () 
                 payload: {
                     mode,
                     question,
+                    ragPrompt,
                     threadId,
                     threadItemId,
                     parentThreadItemId,

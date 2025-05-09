@@ -31,6 +31,7 @@ ctx.addEventListener('message', async (event: MessageEvent) => {
             const {
                 mode,
                 question,
+                ragPrompt,
                 threadId,
                 threadItemId,
                 parentThreadItemId,
@@ -61,6 +62,7 @@ ctx.addEventListener('message', async (event: MessageEvent) => {
             activeWorkflow = runWorkflow({
                 mode,
                 question,
+                ragPrompt,
                 threadId,
                 threadItemId,
                 messages,

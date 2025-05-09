@@ -70,6 +70,7 @@ export type WorkflowEventSchema = {
 export type WorkflowContextSchema = {
     mcpConfig: Record<string, string>;
     question: string;
+    ragPrompt: string;
     search_queries: string[];
     messages: CoreMessage[];
     mode: ChatMode;
@@ -110,6 +111,7 @@ export const runWorkflow = ({
     mcpConfig = {},
     mode,
     question,
+    ragPrompt,
     threadId,
     threadItemId,
     messages,
@@ -124,6 +126,7 @@ export const runWorkflow = ({
     mcpConfig: Record<string, string>;
     mode: ChatMode;
     question: string;
+    ragPrompt: string;
     threadId: string;
     threadItemId: string;
     messages: CoreMessage[];
@@ -170,6 +173,7 @@ export const runWorkflow = ({
     const context = createContext<WorkflowContextSchema>({
         mcpConfig,
         question,
+        ragPrompt,
         mode,
         webSearch,
         search_queries: [],
