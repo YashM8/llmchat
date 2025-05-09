@@ -48,7 +48,7 @@ export const completionTask = createTask<WorkflowEventSchema, WorkflowContextSch
 
         const model = getModelFromChatMode(mode);
 
-        let prompt = ragPrompt;
+        let prompt = ragPrompt || '';
 
         const reasoningBuffer = new ChunkBuffer({
             threshold: 200,

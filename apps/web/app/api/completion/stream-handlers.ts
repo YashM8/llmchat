@@ -70,6 +70,7 @@ export async function executeStream({
         const workflow = runWorkflow({
             mode: data.mode,
             question: data.prompt,
+            ragPrompt: "",
             threadId: data.threadId,
             threadItemId: data.threadItemId,
             messages: data.messages,

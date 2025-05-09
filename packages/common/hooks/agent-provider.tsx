@@ -29,12 +29,12 @@ Respond to the query using information from the provided Context Documents, whic
 Incorporate inline citations in the format [source_id].
 
 ### Example of Citation:
-If the user asks about a specific topic and the information is found in "3.3.5" with a provided <source_id>, the response should include the citation like so:  
+If the user asks about a specific topic and the information is found in a document that includes <source_id>3.3.5</source_id>, the response should include the citation like so:  
 "The proposed method increases efficiency by 20% [3.3.5]."
 
 ### Output:
 Provide a clear and direct response to the user's query, including inline citations in the format [source_id] only when the <source_id> tag is present in the context.
-Finish your response with "My task is complete".
+Finish your response with "Task completed with RAG".
 
 Here are the context passages:
 
@@ -122,7 +122,7 @@ export const AgentProvider = ({ children }: { children: ReactNode }) => {
     }));
 
     useEffect(() => {
-    const TSV_PATH = 'docs.tsv'; // Adjust this as needed
+    const TSV_PATH = 'docs_modified.tsv'; // Adjust this as needed
     const BATCH_SIZE = 10;
 
     const fetchAndEmbedTSV = async () => {
@@ -142,11 +142,11 @@ export const AgentProvider = ({ children }: { children: ReactNode }) => {
             const texts = lines
                   .map((line, idx) => {
                     const cols = line.split('\t');
-                    if (cols.length < 3 || !cols[2]?.trim()) {
+                    if (cols.length <= 3 || !cols[2]?.trim()) {
                     //   console.warn(`⚠️ Skipping invalid line ${idx + 1}:`, line);
                       return null;
                     }
-                    return cols[2].trim();
+                    return `<source_id>${cols[3]}</source_id>${cols[2].trim()}`;
                   })
                   .filter((text): text is string => !!text);
 
