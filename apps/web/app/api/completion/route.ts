@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
 
         const parsed = await request.json().catch(() => ({}));
         const validatedBody = completionRequestSchema.safeParse(parsed);
-
+        console.log("parsed", parsed);
         if (!validatedBody.success) {
             return new Response(
                 JSON.stringify({

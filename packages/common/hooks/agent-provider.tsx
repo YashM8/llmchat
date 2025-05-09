@@ -22,6 +22,21 @@ export type AgentContextType = {
     updateContext: (threadId: string, data: any) => void;
 };
 
+const TOP_K = 1;
+const RAG_INSTRUCTIONS = `### Task:
+You are an assistant helping medical professionals use the CANMAT 2018 Guidelines for Bipolar Disorder.
+Respond to the query using information from the provided Context Documents, which are excerpts from the CANMAT Guidelines. 
+Incorporate inline citations in the format [source_id].
+
+### Example of Citation:
+If the user asks about a specific topic and the information is found in "3.3.5" with a provided <source_id>, the response should include the citation like so:  
+"The proposed method increases efficiency by 20% [3.3.5]."
+
+### Output:
+Provide a clear and direct response to the user's query, including inline citations in the format [source_id] only when the <source_id> tag is present in the context.
+Finish your response with "My task is complete".
+`
+
 const AgentContext = createContext<AgentContextType | undefined>(undefined);
 import * as https from 'https';
 
@@ -40,7 +55,7 @@ function getEmbeddings(inputTexts: string[], task: string): Promise<{ text: stri
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
-            'Authorization': 'Bearer YOUR_API_KEY', //
+            'Authorization': 'Bearer jina_14d53df0cfc745238405fda91e43646ahs4I-7GylX9OUA-MXZNk15XjYOj4', //
             'Content-Length': data.length
         }
     };
@@ -118,13 +133,14 @@ export const AgentProvider = ({ children }: { children: ReactNode }) => {
         try {
             const res = await fetch(TSV_PATH);
             const raw = await res.text();
+            console.log(raw);
 
             const lines = raw.trim().split('\n');
             const texts = lines
                   .map((line, idx) => {
                     const cols = line.split('\t');
                     if (cols.length < 3 || !cols[2]?.trim()) {
-                      console.warn(`⚠️ Skipping invalid line ${idx + 1}:`, line);
+                    //   console.warn(`⚠️ Skipping invalid line ${idx + 1}:`, line);
                       return null;
                     }
                     return cols[2].trim();
@@ -179,7 +195,8 @@ export const AgentProvider = ({ children }: { children: ReactNode }) => {
         updateThread: state.updateThread,
         chatMode: state.chatMode,
         fetchRemainingCredits: state.fetchRemainingCredits,
-        customInstructions: state.customInstructions,
+        customInstructions: "",
+        // customInstructions: state.customInstructions,
     }));
     const { push } = useRouter();
 
@@ -219,13 +236,13 @@ export const AgentProvider = ({ children }: { children: ReactNode }) => {
             parentThreadItemId?: string,
             shouldPersistToDB: boolean = true
         ) => {
-            console.log(
-                'handleThreadItemUpdate',
-                threadItemId,
-                eventType,
-                eventData,
-                shouldPersistToDB
-            );
+            // console.log(
+            //     'handleThreadItemUpdate',
+            //     threadItemId,
+            //     eventType,
+            //     eventData,
+            //     shouldPersistToDB
+            // );
             const prevItem = threadItemMap.get(threadItemId) || ({} as ThreadItem);
             const updatedItem: ThreadItem = {
                 ...prevItem,
@@ -301,6 +318,7 @@ export const AgentProvider = ({ children }: { children: ReactNode }) => {
             });
 
             try {
+                console.log("posting body", body);
                 const response = await fetch('/api/completion', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -509,23 +527,28 @@ export const AgentProvider = ({ children }: { children: ReactNode }) => {
                 score: cosineSim(qEmb, entry.embedding),
               }))
               .sort((a, b) => b.score - a.score)
-              .slice(0, 3);
-
-            // Store the top 3 documents with their scores for UI display
+              .slice(0, TOP_K);
+            console.log(`length of embeddings is ${withScores.length}`);
+            // Store the top k documents with their scores for UI display
             const ragDocuments = withScores.map(doc => ({
                 text: doc.text,
                 score: doc.score
             }));
 
             // Create enhanced query with relevant context
-            const top3texts = withScores.map(e => e.text).join('\n\n\n');
+            const topktexts = withScores.map(e => e.text).join('\n\n\n');
+            // console.log(`query exists ${query}`);
+            const ragInstructions = `
+            ${RAG_INSTRUCTIONS}
+            Here are the context passages:
+            ${topktexts}
+            `;
             const enhancedQuery = `
             ${query}
-            Context Passages START """
-            ${top3texts}
-            """ Context Passages END
-            EXTREMELY IMPORTANT: Only use the Context Passages to answer. Do not use any other outside information. If you don't know the answer, just say so.
-                `;
+            ${RAG_INSTRUCTIONS}
+            Here are the context passages:
+            ${topktexts}
+            `;
 
 
 
@@ -540,7 +563,7 @@ export const AgentProvider = ({ children }: { children: ReactNode }) => {
                 query,
                 imageAttachment,
                 mode,
-                ragDocuments,
+                ragDocuments: ragDocuments, 
             };
 
             createThreadItem(aiThreadItem);
@@ -572,7 +595,7 @@ export const AgentProvider = ({ children }: { children: ReactNode }) => {
                     abortWorkflow();
                     updateThreadItem(threadId, { id: optimisticAiThreadItemId, status: 'ABORTED' });
                 });
-
+                console.log("starting workflow");
                 startWorkflow({
                     mode,
                     question: enhancedQuery,
@@ -585,18 +608,19 @@ export const AgentProvider = ({ children }: { children: ReactNode }) => {
                     apiKeys: apiKeys(),
                 });
             } else {
-                runAgent({
-                    mode: newChatMode || chatMode,
-                    prompt: enhancedQuery,
-                    threadId,
-                    messages: coreMessages,
-                    mcpConfig: getSelectedMCP(),
-                    threadItemId: optimisticAiThreadItemId,
-                    customInstructions,
-                    parentThreadItemId: '',
-                    webSearch: useWebSearch,
-                    showSuggestions: showSuggestions ?? true,
-                });
+                console.log("no api key available");
+                // runAgent({
+                //     mode: newChatMode || chatMode,
+                //     prompt: query,
+                //     threadId,
+                //     messages: coreMessages,
+                //     mcpConfig: getSelectedMCP(),
+                //     threadItemId: optimisticAiThreadItemId,
+                //     customInstructions,
+                //     parentThreadItemId: '',
+                //     webSearch: useWebSearch,
+                //     showSuggestions: showSuggestions ?? true,
+                // });
             }
         },
         [

@@ -66,7 +66,7 @@ export async function executeStream({
         const creditCost = CHAT_MODE_CREDIT_COSTS[data.mode];
 
         const { signal } = abortController;
-
+        console.log("stream handlers data,", data);
         const workflow = runWorkflow({
             mode: data.mode,
             question: data.prompt,

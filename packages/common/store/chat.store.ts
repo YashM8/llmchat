@@ -743,7 +743,7 @@ export const useChatStore = create(
             if (!threadId) return;
 
             try {
-                console.log('updateThreadItem', threadItem);
+                // console.log('updateThreadItem', threadItem);
 
                 // // Fetch the existing item
                 // let existingItem: ThreadItem | undefined;

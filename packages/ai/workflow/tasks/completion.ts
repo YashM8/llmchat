@@ -11,7 +11,7 @@ export const completionTask = createTask<WorkflowEventSchema, WorkflowContextSch
         if (!context) {
             throw new Error('Context is required but was not provided');
         }
-
+        console.log('context', context);
         const customInstructions = context?.get('customInstructions');
         const mode = context.get('mode');
         const webSearch = context.get('webSearch') || false;
@@ -27,18 +27,19 @@ export const completionTask = createTask<WorkflowEventSchema, WorkflowContextSch
 
         console.log('customInstructions', customInstructions);
 
-        if (
-            customInstructions &&
-            customInstructions?.length < MAX_ALLOWED_CUSTOM_INSTRUCTIONS_LENGTH
-        ) {
-            messages = [
-                {
-                    role: 'system',
-                    content: `Today is ${getHumanizedDate()}. and current location is ${context.get('gl')?.city}, ${context.get('gl')?.country}. \n\n ${customInstructions}`,
-                },
-                ...messages,
-            ];
-        }
+        // if (
+        //     customInstructions &&
+        //     customInstructions?.length < MAX_ALLOWED_CUSTOM_INSTRUCTIONS_LENGTH
+        // ) {
+        //     messages = [
+        //         {
+        //             role: 'system',
+        //             content: `Today is ${getHumanizedDate()}. and current location is ${context.get('gl')?.city}, ${context.get('gl')?.country}. \n\n ${customInstructions}`,
+        //         },
+        //         ...messages,
+        //     ];
+        // }
+
 
         if (webSearch) {
             redirectTo('quickSearch');
@@ -48,7 +49,6 @@ export const completionTask = createTask<WorkflowEventSchema, WorkflowContextSch
         const model = getModelFromChatMode(mode);
 
         let prompt = `You are a helpful assistant that can answer questions and help with tasks.
-        Today is ${getHumanizedDate()}.
         `;
 
         const reasoningBuffer = new ChunkBuffer({

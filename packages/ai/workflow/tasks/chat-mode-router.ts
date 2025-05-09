@@ -6,6 +6,7 @@ import { handleError, sendEvents } from '../utils';
 export const modeRoutingTask = createTask<WorkflowEventSchema, WorkflowContextSchema>({
     name: 'router',
     execute: async ({ events, context, redirectTo }) => {
+        console.log("context", context);
         const mode = context?.get('mode') || ChatMode.GEMINI_2_FLASH;
         const { updateStatus } = sendEvents(events);
 
