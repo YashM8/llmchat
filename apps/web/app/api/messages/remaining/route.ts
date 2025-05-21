@@ -1,4 +1,3 @@
-import { auth } from '@clerk/nextjs/server';
 import { NextRequest, NextResponse } from 'next/server';
 import {
     DAILY_CREDITS_AUTH,
@@ -8,8 +7,7 @@ import {
 import { getIp } from '../../completion/utils';
 
 export async function GET(request: NextRequest) {
-    const session = await auth();
-    const userId = session?.userId ?? undefined;
+    const userId = undefined; // userId is no longer available after removing Clerk auth
     const ip = getIp(request);
 
     if (!ip) {
@@ -17,21 +15,19 @@ export async function GET(request: NextRequest) {
     }
 
     try {
-        const remainingCredits = await getRemainingCredits({ userId, ip });
+        const remainingCredits = await getRemainingCredits({ userId: undefined, ip }); // Pass undefined for userId
         const resetTime = getNextResetTime();
 
         return NextResponse.json(
             {
                 remaining: remainingCredits,
-                maxLimit: userId ? DAILY_CREDITS_AUTH : DAILY_CREDITS_IP,
+                maxLimit: DAILY_CREDITS_IP, // Always use IP-based limit
                 reset: new Date(resetTime).toISOString(),
-                isAuthenticated: !!userId,
+                isAuthenticated: false, // isAuthenticated is always false
             },
             {
                 headers: {
-                    'X-Credits-Limit': userId
-                        ? DAILY_CREDITS_AUTH.toString()
-                        : DAILY_CREDITS_IP.toString(),
+                    'X-Credits-Limit': DAILY_CREDITS_IP.toString(), // Always use IP-based limit
                     'X-Credits-Remaining': remainingCredits.toString(),
                     'X-Credits-Reset': resetTime.toString(),
                 },

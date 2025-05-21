@@ -1,5 +1,4 @@
 'use client';
-import { useUser } from '@clerk/nextjs';
 import { DotSpinner } from '@repo/common/components';
 import { useApiKeysStore, useChatStore } from '@repo/common/store';
 import { CHAT_MODE_CREDIT_COSTS, ChatMode, ChatModeConfig } from '@repo/shared/config';
@@ -220,7 +219,8 @@ export const ChatModeOptions = ({
     setChatMode: (chatMode: ChatMode) => void;
     isRetry?: boolean;
 }) => {
-    const { isSignedIn } = useUser();
+    // const { isSignedIn } = useUser(); // Removed useUser hook
+    const isSignedIn = false; // Simulate non-signed-in state or adjust logic as needed
     const hasApiKeyForChatMode = useApiKeysStore(state => state.hasApiKeyForChatMode);
     const isChatPage = usePathname().startsWith('/chat');
     const { push } = useRouter();
@@ -237,10 +237,11 @@ export const ChatModeOptions = ({
                         <DropdownMenuItem
                             key={option.label}
                             onSelect={() => {
-                                if (ChatModeConfig[option.value]?.isAuthRequired && !isSignedIn) {
-                                    push('/sign-in');
-                                    return;
-                                }
+                                // Removed isSignedIn check:
+                                // if (ChatModeConfig[option.value]?.isAuthRequired && !isSignedIn) {
+                                //     push('/sign-in');
+                                //     return;
+                                // }
                                 setChatMode(option.value);
                             }}
                             className="h-auto"
@@ -269,10 +270,11 @@ export const ChatModeOptions = ({
                     <DropdownMenuItem
                         key={option.label}
                         onSelect={() => {
-                            if (ChatModeConfig[option.value]?.isAuthRequired && !isSignedIn) {
-                                push('/sign-in');
-                                return;
-                            }
+                                // Removed isSignedIn check:
+                                // if (ChatModeConfig[option.value]?.isAuthRequired && !isSignedIn) {
+                                //     push('/sign-in');
+                                //     return;
+                                // }
                             setChatMode(option.value);
                         }}
                         className="h-auto"

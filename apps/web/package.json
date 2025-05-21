@@ -4,13 +4,12 @@
     "private": true,
     "scripts": {
         "dev": "next dev",
-        "build": "cd ../../packages/prisma && bun prisma generate && cd ../../apps/web && next build",
+        "build": "cd ../../packages/prisma && bunx prisma generate && cd ../../apps/web && next build",
         "start": "next start",
         "prepare": "husky",
         "generate": "bunx drizzle-kit generate"
     },
     "dependencies": {
-        "@clerk/nextjs": "^6.12.3",
         "@electric-sql/pglite": "0.2.13",
         "@electric-sql/pglite-repl": "^0.2.15",
         "@hotjar/browser": "^1.0.9",

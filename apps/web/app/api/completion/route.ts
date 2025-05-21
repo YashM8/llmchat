@@ -1,4 +1,3 @@
-import { auth } from '@clerk/nextjs/server';
 import { CHAT_MODE_CREDIT_COSTS, ChatModeConfig } from '@repo/shared/config';
 import { Geo, geolocation } from '@vercel/functions';
 import { NextRequest } from 'next/server';
@@ -18,8 +17,7 @@ export async function POST(request: NextRequest) {
     }
 
     try {
-        const session = await auth();
-        const userId = session?.userId ?? undefined;
+        const userId = undefined; // Simulating removed auth
 
         const parsed = await request.json().catch(() => ({}));
         const validatedBody = completionRequestSchema.safeParse(parsed);
@@ -54,12 +52,8 @@ export async function POST(request: NextRequest) {
 
         console.log('remainingCredits', remainingCredits, creditCost, process.env.NODE_ENV);
 
-        if (!!ChatModeConfig[data.mode]?.isAuthRequired && !userId) {
-            return new Response(JSON.stringify({ error: 'Authentication required' }), {
-                status: 401,
-                headers: { 'Content-Type': 'application/json' },
-            });
-        }
+        // The following block related to ChatModeConfig[data.mode]?.isAuthRequired and !userId has been removed.
+        // If a mode previously required auth, it's now accessible or will fail if it cannot handle an undefined userId.
 
         if (remainingCredits < creditCost && process.env.NODE_ENV !== 'development') {
             return new Response(
@@ -72,9 +66,7 @@ export async function POST(request: NextRequest) {
             ...SSE_HEADERS,
             'X-Credits-Available': remainingCredits.toString(),
             'X-Credits-Cost': creditCost.toString(),
-            'X-Credits-Daily-Allowance': userId
-                ? DAILY_CREDITS_AUTH.toString()
-                : DAILY_CREDITS_IP.toString(),
+            'X-Credits-Daily-Allowance': DAILY_CREDITS_IP.toString(), // Always use IP-based allowance as userId is gone
         };
 
         const encoder = new TextEncoder();
@@ -90,7 +82,7 @@ export async function POST(request: NextRequest) {
 
         const stream = createCompletionStream({
             data,
-            userId,
+            userId: undefined, // Pass undefined for userId
             ip,
             abortController,
             gl,
@@ -114,7 +106,7 @@ function createCompletionStream({
     gl,
 }: {
     data: any;
-    userId?: string;
+    userId?: string; // remains optional, will be undefined
     ip?: string;
     abortController: AbortController;
     gl: Geo;
@@ -147,7 +139,7 @@ function createCompletionStream({
                             ];
                         await deductCredits(
                             {
-                                userId: userId ?? undefined,
+                                userId: undefined, // Pass undefined for userId
                                 ip: ip ?? undefined,
                             },
                             creditCost
