@@ -58,7 +58,7 @@ function getEmbeddings(inputTexts: string[], task: string): Promise<{ text: stri
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
-            'Authorization': 'Bearer ', // jina api key
+            'Authorization': `Bearer ${process.env.NEXT_PUBLIC_JINA_API_KEY}`, // jina api key
             'Content-Length': data.length
         }
     };
